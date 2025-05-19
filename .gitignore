@@ -1,0 +1,15 @@
+# Python
+backend/venv/
+__pycache__/
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+
+# VS Code
+.vscode/
+
+# Mac/Windows
+.DS_Store
+Thumbs.db
