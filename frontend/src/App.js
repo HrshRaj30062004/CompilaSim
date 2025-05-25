@@ -18,6 +18,18 @@ const App = () => {
   const [currentPhase, setCurrentPhase] = useState(0);
   const [message, setMessage] = useState('');
 
+  const resetAll = () => {
+    setCode('');
+    setTokens(null);
+    setAst(null);
+    setSemantics(null);
+    setIR(null);
+    setOptimized(null);
+    setFinalCode(null);
+    setCurrentPhase(0);
+    setMessage('');
+  };
+
   const runNextPhase = async () => {
     try {
       switch (currentPhase) {
@@ -36,13 +48,10 @@ const App = () => {
             alert("❗ AST not available. Please run syntax analysis first.");
             return;
           }
-
           const sem = await runSemantic({ ast });
           setSemantics(sem.data);
           break;
         }
-
-
         case 3: {
           const irRes = await runIntermediate({ ast });
           setIR(irRes.data.ir);
@@ -56,7 +65,7 @@ const App = () => {
         case 5: {
           const final = await runCodegen({ ir: optimized });
           console.log("💡 /api/codegen result:", final.data);
-          setFinalCode(final.data.final_code);  // Might be undefined if backend is misbehaving
+          setFinalCode(final.data.final_code);
           setMessage('✅ Compilation Complete!');
           break;
         }
@@ -78,8 +87,7 @@ const App = () => {
     <div style={{ padding: "2rem" }}>
       <h1>🧠 CompilaSim – Phase-by-Phase Compiler Simulator</h1>
       <CodeEditor code={code} setCode={setCode} />
-
-      <PhaseControls onRunNext={runNextPhase} currentPhase={currentPhase} />
+      <PhaseControls onRunNext={runNextPhase} currentPhase={currentPhase} onReset={resetAll} />
 
       {tokens && <PhaseOutput title="🔤 Lexical Tokens" data={tokens} />}
       {ast && <PhaseOutput title="🌲 Parse Tree (AST)" data={ast} />}
