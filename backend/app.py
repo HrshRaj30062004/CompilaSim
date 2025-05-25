@@ -9,7 +9,7 @@ from optimizer import optimize_ast
 from code_generator import generate_final_code
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}}, supports_credentials=True) # ← Enables CORS for all frontend requests
+CORS(app)  # ← Easiest working config for localhost dev
 
 @app.route('/api/lexical', methods=['POST'])
 def lexical_analysis():
@@ -25,13 +25,21 @@ def syntax_analysis():
     tree = run_parser(code)
     return jsonify(tree)
 
-
 @app.route('/api/semantic', methods=['POST'])
 def semantic_analysis():
-    data = request.get_json()
-    ast = data.get("ast", {})
-    result = semantic_check(ast)
-    return jsonify(result)
+    try:
+        data = request.get_json()
+        ast = data.get("ast", {})
+
+        # Debug: Log input to make sure it's not null
+        print("Received AST for semantic analysis:", ast)
+
+        result = semantic_check(ast)
+        return jsonify(result)
+    except Exception as e:
+        print("❌ Error in /api/semantic:", e)
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/intermediate', methods=['POST'])
 def intermediate_code():
@@ -43,19 +51,31 @@ def intermediate_code():
 @app.route('/api/optimize', methods=['POST'])
 def optimize_code():
     data = request.get_json()
-    ast = data.get("ast", {})
+    print("🛠 Raw /api/optimize POST body:", data)
+
+    ast_wrapper = data.get("ast", {})
+    ast = ast_wrapper.get("ast", {})  # ✅ Unwrap second layer
+    print("📦 Extracted AST:", ast)
+
     optimized = optimize_ast(ast)
+    print("✅ Optimized IR:", optimized)
+
     return jsonify(optimized)
 
 @app.route('/api/codegen', methods=['POST'])
 def codegen():
     data = request.get_json()
     ir = data.get("ir", [])
+    
+    # 🔒 Safety check if someone passed a nested dict again
+    if isinstance(ir, dict) and "ir" in ir:
+        ir = ir["ir"]
+
     result = generate_final_code(ir)
+    print("✅ Final generated code:", result)
     return jsonify(result)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

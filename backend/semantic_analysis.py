@@ -1,79 +1,53 @@
-# backend/semantic_analysis.py
-
-symbol_table = {}
-
-def reset_symbol_table():
-    global symbol_table
-    symbol_table = {}
-
 def semantic_check(ast):
-    reset_symbol_table()
+    symbol_table = []
+    errors = []
 
-    if ast["type"] != "Program":
-        return {"error": "Invalid AST structure"}
+    def check_node(node):
+        if not isinstance(node, dict):
+            errors.append("Invalid node structure")
+            return
 
-    results = {
-        "symbol_table": [],
-        "errors": []
-    }
+        node_type = node.get("type")
+        if not node_type:
+            errors.append("Missing 'type' in node")
+            return
 
-    for child in ast.get("children", []):
-        result = analyze_statement(child)
-        results["symbol_table"].extend(result.get("symbol_table", []))
-        results["errors"].extend(result.get("errors", []))
+        if node_type == "Program":
+            for child in node.get("children", []):
+                check_node(child)
 
-    return results
+        elif node_type == "Declaration":
+            try:
+                var_type = node["children"][0]["value"]
+                var_name = node["children"][1]["value"]
+                expr = node["children"][3]
 
+                expr_type = evaluate_expression(expr)
+                if expr_type != var_type:
+                    errors.append(f"Type mismatch: declared '{var_type}', but assigned expression evaluates to '{expr_type}'.")
+                symbol_table.append({"name": var_name, "type": var_type})
+            except Exception as e:
+                errors.append(f"Error processing declaration: {str(e)}")
 
-def analyze_statement(node):
-    result = {"symbol_table": [], "errors": []}
-
-    if node["type"] == "Declaration":
-        type_node = node["children"][0]
-        identifier_node = node["children"][1]
-        expr_node = node["children"][3]
-
-        var_type = type_node["value"]
-        var_name = identifier_node["value"]
-
-        # Check for redeclaration
-        if var_name in symbol_table:
-            result["errors"].append(f"Variable '{var_name}' already declared.")
-        else:
-            inferred_type = evaluate_expression(expr_node)
-            if inferred_type != var_type:
-                result["errors"].append(
-                    f"Type mismatch: declared '{var_type}', but assigned expression evaluates to '{inferred_type}'."
-                )
-
-            # Add to symbol table
-            symbol_table[var_name] = {
-                "name": var_name,
-                "type": var_type,
-                "value": None  # optional: infer constant values
-            }
-
-            result["symbol_table"].append({
-                "name": var_name,
-                "type": var_type
-            })
-
-    return result
-
-
-def evaluate_expression(node):
-    if node["type"] == "Number":
-        return "int"
-    elif node["type"] == "Identifier":
-        var_name = node["value"]
-        if var_name not in symbol_table:
-            return "undeclared"
-        return symbol_table[var_name]["type"]
-    elif node["type"] == "BinaryOperation":
-        left_type = evaluate_expression(node["children"][0])
-        right_type = evaluate_expression(node["children"][2])
-        if left_type != right_type:
-            return "type_error"
-        return left_type
-    else:
+    def evaluate_expression(expr):
+        expr_type = expr.get("type")
+        if expr_type == "Number":
+            return "int"
+        elif expr_type == "Identifier":
+            # lookup in symbol table?
+            return "int"  # Assume int for now
+        elif expr_type == "BinaryOperation":
+            left = evaluate_expression(expr["children"][0])
+            right = evaluate_expression(expr["children"][2])
+            if left == right:
+                return left
+            else:
+                return "type_error"
         return "unknown"
+
+    check_node(ast.get("ast"))  # Accepts the wrapped dict
+
+    return {
+        "symbol_table": symbol_table,
+        "errors": errors
+    }

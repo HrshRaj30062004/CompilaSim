@@ -1,7 +1,5 @@
-# backend/intermediate_codegen.py
-
 temp_counter = 0
-instructions = []
+ir = []
 
 def new_temp():
     global temp_counter
@@ -9,44 +7,46 @@ def new_temp():
     return f"t{temp_counter}"
 
 def reset_codegen():
-    global temp_counter, instructions
+    global temp_counter, ir
     temp_counter = 0
-    instructions = []
+    ir = []
 
 def generate_code(ast):
     reset_codegen()
 
-    if ast["type"] != "Program":
-        return {"error": "Invalid AST"}
+    if not ast:
+        return {"ir": []}
+
+    # Fix: Unwrap 'ast' key if it's present
+    if "ast" in ast and ast["ast"].get("type") == "Program":
+        ast = ast["ast"]
+
+    if ast.get("type") != "Program":
+        return {"ir": []}
 
     for stmt in ast.get("children", []):
-        process_statement(stmt)
+        handle_statement(stmt)
 
-    return {
-        "ir": instructions
-    }
+    return {"ir": ir}
 
-def process_statement(node):
+
+def handle_statement(node):
     if node["type"] == "Declaration":
-        var_name = node["children"][1]["value"]     # e.g., 'a'
-        expr_node = node["children"][3]             # The expression part
-        result_temp = evaluate_expression(expr_node)
-        instructions.append(f"{var_name} = {result_temp}")
+        var_name = node["children"][1]["value"]
+        expr_node = node["children"][3]
+        result = generate_expr(expr_node)
+        ir.append(f"{var_name} = {result}")
 
-def evaluate_expression(node):
+def generate_expr(node):
     if node["type"] == "Number":
         return str(node["value"])
-
     elif node["type"] == "Identifier":
         return node["value"]
-
     elif node["type"] == "BinaryOperation":
-        left = evaluate_expression(node["children"][0])
+        left = generate_expr(node["children"][0])
         op = node["children"][1]["value"]
-        right = evaluate_expression(node["children"][2])
-
+        right = generate_expr(node["children"][2])
         temp = new_temp()
-        instructions.append(f"{temp} = {left} {op} {right}")
+        ir.append(f"{temp} = {left} {op} {right}")
         return temp
-
     return "?"

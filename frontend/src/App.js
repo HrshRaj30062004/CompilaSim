@@ -2,20 +2,10 @@ import React, { useState } from 'react';
 import CodeEditor from './components/CodeEditor';
 import PhaseOutput from './components/PhaseOutput';
 import PhaseControls from './components/PhaseControls';
-
 import {
   runLexical, runSyntax, runSemantic,
   runIntermediate, runOptimize, runCodegen
 } from './services/api';
-
-const phaseColors = {
-  lexical: '#ff6f61',
-  syntax: '#6b5b95',
-  semantic: '#88b04b',
-  intermediate: '#f7cac9',
-  optimize: '#92a8d1',
-  codegen: '#955251'
-};
 
 const App = () => {
   const [code, setCode] = useState('');
@@ -25,114 +15,80 @@ const App = () => {
   const [ir, setIR] = useState(null);
   const [optimized, setOptimized] = useState(null);
   const [finalCode, setFinalCode] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState(0);
+  const [message, setMessage] = useState('');
 
-  const runAll = async () => {
+  const runNextPhase = async () => {
     try {
-      setLoading(true);
-      const lex = await runLexical(code);
-      setTokens(lex.data);
+      switch (currentPhase) {
+        case 0: {
+          const lex = await runLexical(code);
+          setTokens(lex.data);
+          break;
+        }
+        case 1: {
+          const syn = await runSyntax(code);
+          setAst(syn.data);
+          break;
+        }
+        case 2: {
+          if (!ast || Object.keys(ast).length === 0) {
+            alert("❗ AST not available. Please run syntax analysis first.");
+            return;
+          }
 
-      const syn = await runSyntax(code);
-      setAst(syn.data);
+          const sem = await runSemantic({ ast });
+          setSemantics(sem.data);
+          break;
+        }
 
-      const sem = await runSemantic(syn.data);
-      setSemantics(sem.data);
 
-      const irResp = await runIntermediate(syn.data);
-      setIR(irResp.data.ir);
+        case 3: {
+          const irRes = await runIntermediate({ ast });
+          setIR(irRes.data.ir);
+          break;
+        }
+        case 4: {
+          const opt = await runOptimize({ ast: { ir } });
+          setOptimized(opt.data.optimized_ir);
+          break;
+        }
+        case 5: {
+          const final = await runCodegen({ ir: optimized });
+          console.log("💡 /api/codegen result:", final.data);
+          setFinalCode(final.data.final_code);  // Might be undefined if backend is misbehaving
+          setMessage('✅ Compilation Complete!');
+          break;
+        }
+        default:
+          break;
+      }
 
-      const opt = await runOptimize(syn.data);
-      setOptimized(opt.data.optimized_ir);
+      if (currentPhase < 6) {
+        setCurrentPhase(currentPhase + 1);
+      }
 
-      const final = await runCodegen(opt.data.optimized_ir);
-      setFinalCode(final.data.final_code);
     } catch (err) {
-      console.error("Compiler Error:", err);
+      console.error(err);
       alert("Error: " + (err?.response?.data?.error || err.message || "Unknown"));
-    } finally {
-      setLoading(false);
     }
   };
 
-  const containerStyle = {
-    maxWidth: 900,
-    margin: "2rem auto",
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    color: "#222"
-  };
-
-  const headerStyle = {
-    textAlign: "center",
-    marginBottom: "1.5rem",
-    fontWeight: "700",
-    fontSize: "2rem",
-    color: "#333"
-  };
-
-  const phaseStyle = {
-    backgroundColor: "#fafafa",
-    padding: "1rem",
-    borderRadius: 8,
-    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-    marginBottom: "1.5rem",
-    fontFamily: "monospace",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-    lineHeight: "1.4"
-  };
-
-  const titleStyle = (color) => ({
-    borderLeft: `6px solid ${color}`,
-    paddingLeft: "0.5rem",
-    marginBottom: "0.75rem",
-    color,
-    fontWeight: "600",
-    fontSize: "1.2rem"
-  });
-
   return (
-    <div style={containerStyle}>
-      <h1 style={headerStyle}>🧠 CompilaSim – Mini Compiler Simulator</h1>
+    <div style={{ padding: "2rem" }}>
+      <h1>🧠 CompilaSim – Phase-by-Phase Compiler Simulator</h1>
       <CodeEditor code={code} setCode={setCode} />
-      <PhaseControls onRunAll={runAll} loading={loading} />
-      
-      {tokens && (
-        <div style={phaseStyle}>
-          <h2 style={titleStyle(phaseColors.lexical)}>🔤 Lexical Tokens</h2>
-          <PhaseOutput data={tokens} />
-        </div>
-      )}
-      {ast && (
-        <div style={phaseStyle}>
-          <h2 style={titleStyle(phaseColors.syntax)}>🌲 Parse Tree (AST)</h2>
-          <PhaseOutput data={ast} />
-        </div>
-      )}
-      {semantics && (
-        <div style={phaseStyle}>
-          <h2 style={titleStyle(phaseColors.semantic)}>📚 Semantic Analysis</h2>
-          <PhaseOutput data={semantics} />
-        </div>
-      )}
-      {ir && (
-        <div style={phaseStyle}>
-          <h2 style={titleStyle(phaseColors.intermediate)}>🔧 Intermediate Code (IR)</h2>
-          <PhaseOutput data={ir} />
-        </div>
-      )}
-      {optimized && (
-        <div style={phaseStyle}>
-          <h2 style={titleStyle(phaseColors.optimize)}>🚀 Optimized Code</h2>
-          <PhaseOutput data={optimized} />
-        </div>
-      )}
-      {finalCode && (
-        <div style={phaseStyle}>
-          <h2 style={titleStyle(phaseColors.codegen)}>⚙️ Final Code Generation</h2>
-          <PhaseOutput data={finalCode} />
-        </div>
-      )}
+
+      <PhaseControls onRunNext={runNextPhase} currentPhase={currentPhase} />
+
+      {tokens && <PhaseOutput title="🔤 Lexical Tokens" data={tokens} />}
+      {ast && <PhaseOutput title="🌲 Parse Tree (AST)" data={ast} />}
+      {semantics && <PhaseOutput title="📚 Semantic Analysis" data={semantics} />}
+      {ir && <PhaseOutput title="🔧 Intermediate Code (IR)" data={ir} />}
+      {optimized && <PhaseOutput title="🚀 Optimized Code" data={optimized} />}
+      {finalCode && <PhaseOutput title="⚙️ Final Code Generation" data={finalCode} />}
+
+      {message && <h2 style={{ color: "green" }}>{message}</h2>}
     </div>
   );
 };
