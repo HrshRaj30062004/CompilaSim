@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import CodeEditor from './components/CodeEditor';
 import PhaseOutput from './components/PhaseOutput';
 import PhaseControls from './components/PhaseControls';
+import ASTTree from './components/ASTTree'; // ✅ Import the tree view component
 import {
   runLexical, runSyntax, runSemantic,
   runIntermediate, runOptimize, runCodegen
@@ -87,8 +88,6 @@ const App = () => {
 
           break;
         }
-
-
         default:
           break;
       }
@@ -134,16 +133,22 @@ const App = () => {
               fontWeight: selectedTab === idx ? 'bold' : 'normal'
             }}
           >
-            {phase.title.split(' ')[0]} {/* Just the emoji/icon */}
+            {phase.title.split(' ')[0]}
           </button>
-        ))} {/*this is th 139th line where error is shown in console*/}
+        ))}
       </div>
 
-      {/* ✅ Phase Output */}
+      {/* ✅ Phase Output or AST Tree */}
       {phases[selectedTab] && phases[selectedTab].data && (
-        <PhaseOutput title={phases[selectedTab].title} data={phases[selectedTab].data} />
+        selectedTab === 1 ? (
+          <>
+            <ASTTree ast={phases[selectedTab].data} />
+            <PhaseOutput title={phases[selectedTab].title} data={phases[selectedTab].data} />
+          </>
+        ) : (
+          <PhaseOutput title={phases[selectedTab].title} data={phases[selectedTab].data} />
+        )
       )}
-
 
       {message && <h2 style={{ color: "green" }}>{message}</h2>}
     </div>
