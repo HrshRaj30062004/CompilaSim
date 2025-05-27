@@ -17,6 +17,7 @@ const App = () => {
   const [finalCode, setFinalCode] = useState(null);
   const [currentPhase, setCurrentPhase] = useState(0);
   const [message, setMessage] = useState('');
+  const [selectedTab, setSelectedTab] = useState(0);
 
   const resetAll = () => {
     setCode('');
@@ -28,6 +29,7 @@ const App = () => {
     setFinalCode(null);
     setCurrentPhase(0);
     setMessage('');
+    setSelectedTab(0);
   };
 
   const runNextPhase = async () => {
@@ -63,18 +65,37 @@ const App = () => {
           break;
         }
         case 5: {
-          const final = await runCodegen({ ir: optimized });
-          console.log("💡 /api/codegen result:", final.data);
-          setFinalCode(final.data.final_code);
-          setMessage('✅ Compilation Complete!');
+          if (!optimized || !Array.isArray(optimized)) {
+            alert("⚠️ Optimized IR not available.");
+            return;
+          }
+
+          try {
+            const final = await runCodegen({ ir: optimized });
+
+            if (final && final.data && Array.isArray(final.data.final_code)) {
+              setFinalCode(final.data.final_code);
+              setMessage('✅ Compilation Complete!');
+            } else {
+              console.error("❌ Codegen failed or malformed:", final);
+              alert("❌ Codegen failed: No valid response received.");
+            }
+          } catch (err) {
+            console.error("❌ Exception in codegen phase:", err);
+            alert("❌ Error during codegen: " + (err.message || "unknown"));
+          }
+
           break;
         }
+
+
         default:
           break;
       }
 
       if (currentPhase < 6) {
         setCurrentPhase(currentPhase + 1);
+        setSelectedTab(currentPhase + 1); // auto switch to new tab
       }
 
     } catch (err) {
@@ -83,18 +104,46 @@ const App = () => {
     }
   };
 
+  const phases = [
+    { title: "🔤 Lexical Tokens", data: tokens },
+    { title: "🌲 Parse Tree (AST)", data: ast },
+    { title: "📚 Semantic Analysis", data: semantics },
+    { title: "🔧 Intermediate Code (IR)", data: ir },
+    { title: "🚀 Optimized Code", data: optimized },
+    { title: "⚙️ Final Code Generation", data: finalCode }
+  ];
+
   return (
     <div style={{ padding: "2rem" }}>
       <h1>🧠 CompilaSim – Phase-by-Phase Compiler Simulator</h1>
       <CodeEditor code={code} setCode={setCode} />
       <PhaseControls onRunNext={runNextPhase} currentPhase={currentPhase} onReset={resetAll} />
 
-      {tokens && <PhaseOutput title="🔤 Lexical Tokens" data={tokens} />}
-      {ast && <PhaseOutput title="🌲 Parse Tree (AST)" data={ast} />}
-      {semantics && <PhaseOutput title="📚 Semantic Analysis" data={semantics} />}
-      {ir && <PhaseOutput title="🔧 Intermediate Code (IR)" data={ir} />}
-      {optimized && <PhaseOutput title="🚀 Optimized Code" data={optimized} />}
-      {finalCode && <PhaseOutput title="⚙️ Final Code Generation" data={finalCode} />}
+      {/* ✅ Tabs Header */}
+      <div style={{ display: 'flex', gap: '0.5rem', margin: '1rem 0' }}>
+        {phases.map((phase, idx) => (
+          <button
+            key={idx}
+            onClick={() => setSelectedTab(idx)}
+            disabled={!phase.data}
+            style={{
+              padding: '0.5rem 1rem',
+              border: selectedTab === idx ? '2px solid #444' : '1px solid #ccc',
+              backgroundColor: selectedTab === idx ? '#e0e0e0' : '#f9f9f9',
+              cursor: phase.data ? 'pointer' : 'not-allowed',
+              fontWeight: selectedTab === idx ? 'bold' : 'normal'
+            }}
+          >
+            {phase.title.split(' ')[0]} {/* Just the emoji/icon */}
+          </button>
+        ))} {/*this is th 139th line where error is shown in console*/}
+      </div>
+
+      {/* ✅ Phase Output */}
+      {phases[selectedTab] && phases[selectedTab].data && (
+        <PhaseOutput title={phases[selectedTab].title} data={phases[selectedTab].data} />
+      )}
+
 
       {message && <h2 style={{ color: "green" }}>{message}</h2>}
     </div>
