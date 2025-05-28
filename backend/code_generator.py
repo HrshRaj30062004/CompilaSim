@@ -14,30 +14,37 @@ def generate_final_code(ir_instructions):
 
         instr = instr.strip()
 
-        # Handle label (e.g., L1:)
         if instr.endswith(":"):
             final_code.append(instr)
             continue
 
-        # Handle unconditional jump (goto L1)
         if instr.startswith("goto "):
             label = instr.split()[1]
             final_code.append(f"JMP {label}")
             continue
 
-        # Handle conditional jump (ifFalse t1 goto L1)
         if instr.startswith("ifFalse"):
             parts = instr.split()
             if len(parts) == 4 and parts[2] == "goto":
                 cond_var = parts[1]
                 label = parts[3]
-                final_code.append(f"JZ {cond_var}, {label}")  # Jump if zero
+                final_code.append(f"JZ {cond_var}, {label}")
                 continue
             else:
                 errors.append(f"Malformed ifFalse: {instr}")
                 continue
 
-        # Handle return
+        if instr.startswith("if"):
+            parts = instr.split()
+            if len(parts) == 4 and parts[2] == "goto":
+                cond_var = parts[1]
+                label = parts[3]
+                final_code.append(f"JNZ {cond_var}, {label}")
+                continue
+            else:
+                errors.append(f"Malformed if: {instr}")
+                continue
+
         if instr.startswith("return"):
             parts = instr.split()
             if len(parts) == 2:
@@ -46,7 +53,22 @@ def generate_final_code(ir_instructions):
                 errors.append(f"Malformed return: {instr}")
             continue
 
-        # Regular assignment: a = b op c
+        if instr.startswith("printf"):
+            parts = instr.split(maxsplit=1)
+            if len(parts) == 2:
+                final_code.append(f"PRINT {parts[1]}")
+            else:
+                errors.append(f"Malformed printf: {instr}")
+            continue
+
+        if instr.startswith("scanf"):
+            parts = instr.split(maxsplit=1)
+            if len(parts) == 2:
+                final_code.append(f"SCAN {parts[1]}")
+            else:
+                errors.append(f"Malformed scanf: {instr}")
+            continue
+
         if '=' in instr:
             left_expr = instr.split('=', 1)
             if len(left_expr) != 2:
@@ -71,9 +93,7 @@ def generate_final_code(ir_instructions):
                 final_code.append(f"LOAD {operand1}")
                 final_code.append(f"{asm_op} {operand2}")
                 final_code.append(f"STORE {left}")
-
             else:
-                # Simple assignment
                 final_code.append(f"LOAD {expr}")
                 final_code.append(f"STORE {left}")
         else:
@@ -83,7 +103,6 @@ def generate_final_code(ir_instructions):
         "final_code": final_code,
         "errors": errors
     }
-
 
 def op_to_asm(op):
     return {

@@ -1,23 +1,18 @@
 # backend/syntax_analysis.py
 
 import ply.yacc as yacc
-from lexical_analysis import tokens  # Reuse tokens from lexer
-
-# ------------------------
-# AST Node Generator
-# ------------------------
+from lexical_analysis import tokens
 
 def make_node(type, children=None, value=None):
+    if children is None:
+        children = []
     return {
         "type": type,
-        "children": children if children else [],
+        "children": children,
         "value": value
     }
 
-# ------------------------
-# Grammar Rules
-# ------------------------
-
+# Grammar rules:
 def p_program(p):
     "program : function"
     p[0] = make_node("Program", [p[1]])
@@ -36,9 +31,11 @@ def p_statements(p):
     if len(p) == 2:
         p[0] = [p[1]]
     else:
-        p[0] = p[1] + [p[2]]
-
-# --- Statements ---
+        combined = []
+        for stmt in p[1]:
+            combined.append(stmt)
+        combined.append(p[2])
+        p[0] = combined
 
 def p_statement_declaration(p):
     "statement : INT decl_list SEMICOLON"
@@ -50,7 +47,11 @@ def p_decl_list(p):
     if len(p) == 2:
         p[0] = [p[1]]
     else:
-        p[0] = p[1] + [p[3]]
+        combined = []
+        for d in p[1]:
+            combined.append(d)
+        combined.append(p[3])
+        p[0] = combined
 
 def p_decl(p):
     """decl : IDENTIFIER
@@ -80,7 +81,34 @@ def p_statement_while(p):
     "statement : WHILE LPAREN expression RPAREN block"
     p[0] = make_node("While", [p[3], p[5]])
 
-# --- Expressions ---
+def p_statement_printf(p):
+    """statement : PRINTF LPAREN string_and_args RPAREN SEMICOLON
+                 | SCANF LPAREN string_and_args RPAREN SEMICOLON"""
+    if p[1] == "printf":
+        p[0] = make_node("Printf", p[3])
+    else:
+        p[0] = make_node("Scanf", p[3])
+
+def p_string_and_args(p):
+    """string_and_args : STRING
+                       | STRING COMMA arg_list"""
+    lst = [make_node("String", value=p[1])]
+    if len(p) == 4:
+        for a in p[3]:
+            lst.append(a)
+    p[0] = lst
+
+def p_arg_list(p):
+    """arg_list : arg_list COMMA expression
+                | expression"""
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        result = []
+        for a in p[1]:
+            result.append(a)
+        result.append(p[3])
+        p[0] = result
 
 def p_expression_relational(p):
     """expression : expression LT term
@@ -121,9 +149,9 @@ def p_factor_grouped(p):
     "factor : LPAREN expression RPAREN"
     p[0] = p[2]
 
-# ------------------------
-# Error Handling
-# ------------------------
+def p_factor_string(p):
+    "factor : STRING"
+    p[0] = make_node("String", value=p[1])
 
 def p_error(p):
     if p:
@@ -131,15 +159,10 @@ def p_error(p):
     else:
         raise SyntaxError("Syntax error at EOF")
 
-# ------------------------
-# Parser Entry Point
-# ------------------------
-
 parser = yacc.yacc()
 
 def run_parser(code):
     try:
-        result = parser.parse(code)
-        return result
+        return parser.parse(code)
     except SyntaxError as e:
         return {"error": str(e)}

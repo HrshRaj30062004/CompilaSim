@@ -1,0 +1,66 @@
+.ast-tree-container {
+  width: 100%;
+  overflow: auto;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  max-height: 500px;
+}
+
+.ast-tree {
+  font-family: 'Fira Code', monospace;
+  position: relative;
+}
+
+.ast-node {
+  position: relative;
+  margin-left: calc(var(--depth) * 24px);
+  padding: 8px 0;
+}
+
+.node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.node-type-badge {
+  background: var(--accent);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.node-value {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.node-children {
+  position: relative;
+  padding-left: 16px;
+}
+
+.node-connector {
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 50%;
+  width: 16px;
+  border-left: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  border-bottom-left-radius: 8px;
+}
+
+.root-node {
+  margin-left: 0;
+}
+
+.root-node .node-type-badge {
+  background: var(--accent-dark);
+  font-size: 0.9rem;
+  padding: 6px 12px;
+}

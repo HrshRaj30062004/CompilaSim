@@ -98,6 +98,24 @@ def handle_node(node):
         ir.append(f"goto {label_start}")
         ir.append(f"{label_end}:")
 
+    elif node_type == "Printf":
+        args = []
+        for arg in node.get("children", []):
+            if arg.get("type") == "String":
+                args.append(f'"{arg.get("value")}"')
+            else:
+                args.append(generate_expr(arg))
+        ir.append(f"printf {', '.join(args)}")
+
+    elif node_type == "Scanf":
+        args = []
+        for arg in node.get("children", []):
+            if arg.get("type") == "String":
+                args.append(f'"{arg.get("value")}"')
+            else:
+                args.append(arg.get("value"))
+        ir.append(f"scanf {', '.join(args)}")
+
 
 def generate_expr(node):
     node_type = node.get("type")
@@ -106,6 +124,8 @@ def generate_expr(node):
         return str(node["value"])
     elif node_type == "Identifier":
         return node["value"]
+    elif node_type == "String":
+        return f'"{node["value"]}"'
     elif node_type == "BinaryOperation":
         left = generate_expr(node["children"][0])
         op = node["children"][1]["value"]

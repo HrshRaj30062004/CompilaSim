@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import CodeEditor from './components/CodeEditor';
 import PhaseOutput from './components/PhaseOutput';
 import PhaseControls from './components/PhaseControls';
-import ASTTree from './components/ASTTree'; // ✅ Import the tree view component
-import {
+import { 
   runLexical, runSyntax, runSemantic,
   runIntermediate, runOptimize, runCodegen
 } from './services/api';
+import './App.css';
 
 const App = () => {
   const [code, setCode] = useState('');
@@ -19,9 +19,12 @@ const App = () => {
   const [currentPhase, setCurrentPhase] = useState(0);
   const [message, setMessage] = useState('');
   const [selectedTab, setSelectedTab] = useState(0);
+  const [theme, setTheme] = useState('light');
+  const [fileName, setFileName] = useState('');
 
   const resetAll = () => {
     setCode('');
+    setFileName('');
     setTokens(null);
     setAst(null);
     setSemantics(null);
@@ -34,15 +37,23 @@ const App = () => {
   };
 
   const runNextPhase = async () => {
+    // Use code from editor or uploaded file
+    const codeToProcess = code.trim();
+    
+    if (!codeToProcess) {
+      alert("Please enter code or upload a file first!");
+      return;
+    }
+
     try {
       switch (currentPhase) {
         case 0: {
-          const lex = await runLexical(code);
+          const lex = await runLexical(codeToProcess);
           setTokens(lex.data);
           break;
         }
         case 1: {
-          const syn = await runSyntax(code);
+          const syn = await runSyntax(codeToProcess);
           setAst(syn.data);
           break;
         }
@@ -70,22 +81,10 @@ const App = () => {
             alert("⚠️ Optimized IR not available.");
             return;
           }
-
-          try {
-            const final = await runCodegen({ ir: optimized });
-
-            if (final && final.data && Array.isArray(final.data.final_code)) {
-              setFinalCode(final.data.final_code);
-              setMessage('✅ Compilation Complete!');
-            } else {
-              console.error("❌ Codegen failed or malformed:", final);
-              alert("❌ Codegen failed: No valid response received.");
-            }
-          } catch (err) {
-            console.error("❌ Exception in codegen phase:", err);
-            alert("❌ Error during codegen: " + (err.message || "unknown"));
-          }
-
+          const final = await runCodegen({ ir: optimized });
+          console.log('Codegen output:', JSON.stringify(final.data, null, 2));
+          setFinalCode(final.data.final_code);
+          setMessage('✅ Compilation Complete!');
           break;
         }
         default:
@@ -94,63 +93,79 @@ const App = () => {
 
       if (currentPhase < 6) {
         setCurrentPhase(currentPhase + 1);
-        setSelectedTab(currentPhase + 1); // auto switch to new tab
+        setSelectedTab(currentPhase + 1);
       }
-
     } catch (err) {
-      console.error(err);
-      alert("Error: " + (err?.response?.data?.error || err.message || "Unknown"));
+      console.error("Compilation error:", err);
+      alert(`Error: ${err?.response?.data?.error || err.message || "Unknown error"}`);
     }
   };
 
   const phases = [
-    { title: "🔤 Lexical Tokens", data: tokens },
-    { title: "🌲 Parse Tree (AST)", data: ast },
-    { title: "📚 Semantic Analysis", data: semantics },
-    { title: "🔧 Intermediate Code (IR)", data: ir },
-    { title: "🚀 Optimized Code", data: optimized },
-    { title: "⚙️ Final Code Generation", data: finalCode }
+    { title: "Lexical Tokens", data: tokens },
+    { title: "Parse Tree (AST)", data: ast },
+    { title: "Semantic Analysis", data: semantics },
+    { title: "Intermediate Code (IR)", data: ir },
+    { title: "Optimized Code", data: optimized },
+    { title: "Final Code Generation", data: finalCode }
   ];
 
+  const handleFileUpload = (file, fileName) => {
+    setFileName(fileName);
+    setCode(file);
+  };
+
   return (
-    <div style={{ padding: "2rem" }}>
-      <h1>🧠 CompilaSim – Phase-by-Phase Compiler Simulator</h1>
-      <CodeEditor code={code} setCode={setCode} />
-      <PhaseControls onRunNext={runNextPhase} currentPhase={currentPhase} onReset={resetAll} />
+    <div className="compiler-container" data-theme={theme}>
+      <header className="header">
+        <h1 className="logo">CompilaSim</h1>
+        <button 
+          className="theme-toggle"
+          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
+          {theme === 'light' ? '🌙' : '☀️'}
+        </button>
+      </header>
 
-      {/* ✅ Tabs Header */}
-      <div style={{ display: 'flex', gap: '0.5rem', margin: '1rem 0' }}>
-        {phases.map((phase, idx) => (
-          <button
-            key={idx}
-            onClick={() => setSelectedTab(idx)}
-            disabled={!phase.data}
-            style={{
-              padding: '0.5rem 1rem',
-              border: selectedTab === idx ? '2px solid #444' : '1px solid #ccc',
-              backgroundColor: selectedTab === idx ? '#e0e0e0' : '#f9f9f9',
-              cursor: phase.data ? 'pointer' : 'not-allowed',
-              fontWeight: selectedTab === idx ? 'bold' : 'normal'
-            }}
-          >
-            {phase.title.split(' ')[0]}
-          </button>
-        ))}
-      </div>
+      <main className="main-content">
+        <div>
+          <CodeEditor 
+            code={code} 
+            setCode={setCode}
+            fileName={fileName}
+            onFileUpload={handleFileUpload}
+          />
+          <PhaseControls 
+            onRunNext={runNextPhase} 
+            currentPhase={currentPhase} 
+            onReset={resetAll} 
+          />
+        </div>
 
-      {/* ✅ Phase Output or AST Tree */}
-      {phases[selectedTab] && phases[selectedTab].data && (
-        selectedTab === 1 ? (
-          <>
-            <ASTTree ast={phases[selectedTab].data} />
-            <PhaseOutput title={phases[selectedTab].title} data={phases[selectedTab].data} />
-          </>
-        ) : (
-          <PhaseOutput title={phases[selectedTab].title} data={phases[selectedTab].data} />
-        )
-      )}
+        <div className="phase-output-container">
+          <div className="phase-tabs">
+            {phases.map((phase, idx) => (
+              <button
+                key={idx}
+                className={`phase-tab ${selectedTab === idx ? 'active' : ''}`}
+                onClick={() => setSelectedTab(idx)}
+                disabled={!phase.data}
+              >
+                {phase.title.split(' ')[0]}
+              </button>
+            ))}
+          </div>
 
-      {message && <h2 style={{ color: "green" }}>{message}</h2>}
+          {phases[selectedTab]?.data && (
+            <PhaseOutput 
+              title={phases[selectedTab].title} 
+              data={phases[selectedTab].data} 
+            />
+          )}
+          {message && <p className="completion-message">{message}</p>}
+        </div>
+      </main>
     </div>
   );
 };

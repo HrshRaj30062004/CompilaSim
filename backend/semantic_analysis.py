@@ -26,6 +26,8 @@ def semantic_check(ast):
             return "int"
         elif expr_type == "Identifier":
             return lookup_symbol(expr.get("value"))
+        elif expr_type == "String":
+            return "string"
         elif expr_type == "BinaryOperation":
             left = evaluate_expression(expr["children"][0])
             right = evaluate_expression(expr["children"][2])
@@ -100,6 +102,36 @@ def semantic_check(ast):
             if cond_type != "int":
                 errors.append("Condition in while must be of type 'int'")
             check_node(node["children"][1])  # while block
+
+        elif node_type == "Printf":
+            if not node.get("children"):
+                errors.append("printf requires at least one argument")
+                return
+                
+            first_arg = node["children"][0]
+            if first_arg.get("type") != "String":
+                errors.append("First argument to printf must be a format string")
+            
+            for arg in node.get("children", [])[1:]:
+                if arg.get("type") == "Identifier":
+                    lookup_symbol(arg.get("value"))
+                elif arg.get("type") == "BinaryOperation":
+                    evaluate_expression(arg)
+
+        elif node_type == "Scanf":
+            if not node.get("children"):
+                errors.append("scanf requires at least one argument")
+                return
+                
+            first_arg = node["children"][0]
+            if first_arg.get("type") != "String":
+                errors.append("First argument to scanf must be a format string")
+            
+            for arg in node.get("children", [])[1:]:
+                if arg.get("type") != "Identifier":
+                    errors.append("scanf arguments must be variable names")
+                else:
+                    lookup_symbol(arg.get("value"))
 
     # Entry point
     check_node(ast.get("ast"))

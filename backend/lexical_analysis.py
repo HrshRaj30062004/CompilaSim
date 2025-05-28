@@ -2,83 +2,94 @@
 
 import ply.lex as lex
 
-# Reserved keywords
 reserved = {
     'int': 'INT',
     'if': 'IF',
     'else': 'ELSE',
     'while': 'WHILE',
     'for': 'FOR',
-    'return': 'RETURN'
+    'return': 'RETURN',
+    'printf': 'PRINTF',
+    'scanf': 'SCANF'
 }
 
-# List of token names (including reserved keywords)
 tokens = [
-    'NUMBER',
-    'IDENTIFIER',
-    'PLUS',
-    'MINUS',
-    'MULTIPLY',
-    'DIVIDE',
-    'EQUALS',
-    'LPAREN',
-    'RPAREN',
-    'LBRACE',
-    'RBRACE',
-    'SEMICOLON',
-    'COMMA',
+    'NUMBER', 'FLOAT', 'CHAR', 'STRING', 'IDENTIFIER',
+    'PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE', 'EQUALS',
+    'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE',
+    'SEMICOLON', 'COMMA',
     'LT', 'GT', 'LE', 'GE', 'EQ', 'NE'
+] + list(reserved.values())
 
-] + list(reserved.values())  # Add reserved words as tokens
-
-# Token regex rules
-t_PLUS      = r'\+'
-t_MINUS     = r'-'
-t_MULTIPLY  = r'\*'
-t_DIVIDE    = r'/'
-t_EQUALS    = r'='
-t_LPAREN    = r'\('
-t_RPAREN    = r'\)'
-t_LBRACE    = r'\{'
-t_RBRACE    = r'\}'
+t_PLUS = r'\+'
+t_MINUS = r'-'
+t_MULTIPLY = r'\*'
+t_DIVIDE = r'/'
+t_EQUALS = r'='
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
+t_LBRACE = r'\{'
+t_RBRACE = r'\}'
 t_SEMICOLON = r';'
-t_COMMA     = r','
-t_LT    = r'<'
-t_GT    = r'>'
-t_LE    = r'<='
-t_GE    = r'>='
-t_EQ    = r'=='
-t_NE    = r'!='
+t_COMMA = r','
+t_LT = r'<'
+t_GT = r'>'
+t_LE = r'<='
+t_GE = r'>='
+t_EQ = r'=='
+t_NE = r'!='
 
-# Identifier or keyword
-def t_IDENTIFIER(t):
-    r'[a-zA-Z_][a-zA-Z0-9_]*'
-    t.type = reserved.get(t.value, 'IDENTIFIER')
+def t_STRING(t):
+    r'\"([^\\\n]|(\\.))*?\"'
+    t.value = str(t.value)
     return t
 
-# Integer literal
+def t_CHAR(t):
+    r'\'([^\\\n]|(\\.))\''
+    return t
+
+def t_FLOAT(t):
+    r'\d+\.\d+'
+    t.value = float(t.value)
+    return t
+
 def t_NUMBER(t):
     r'\d+'
     t.value = int(t.value)
     return t
 
-# Ignore spaces and tabs
+def t_IDENTIFIER(t):
+    r'[a-zA-Z_][a-zA-Z0-9_]*'
+    if t.value in reserved:
+        t.type = reserved[t.value]
+    else:
+        t.type = 'IDENTIFIER'
+    return t
+
+def t_comment_single(t):
+    r'//.*'
+    pass
+
+def t_comment_multi(t):
+    r'/\*[\s\S]*?\*/'
+    pass
+
 t_ignore = ' \t'
 
-# Track line numbers
 def t_newline(t):
     r'\n+'
-    t.lexer.lineno += len(t.value)
+    count = 0
+    for c in t.value:
+        if c == '\n':
+            count += 1
+    t.lexer.lineno += count
 
-# Error handling
 def t_error(t):
     print(f"Illegal character '{t.value[0]}' at position {t.lexpos}")
     t.lexer.skip(1)
 
-# Build the lexer
 lexer = lex.lex()
 
-# Run the lexer and return structured result
 def run_lexer(code):
     lexer.input(code)
     result = []
@@ -86,9 +97,9 @@ def run_lexer(code):
         tok = lexer.token()
         if not tok:
             break
-        result.append({
-            "type": tok.type,
-            "value": tok.value,
-            "position": tok.lexpos
-        })
+        token_dict = {}
+        token_dict["type"] = tok.type
+        token_dict["value"] = tok.value
+        token_dict["position"] = tok.lexpos
+        result.append(token_dict)
     return result

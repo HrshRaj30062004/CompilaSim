@@ -14,16 +14,16 @@ def optimize_ast(ast):
     for line in ir:
         stripped = line.strip()
 
-        # 1. Skip labels, jumps, conditionals, and returns
         if (stripped.endswith(':') or 
             stripped.startswith('goto') or 
             stripped.startswith('if') or 
-            stripped.startswith('return') or 
+            stripped.startswith('return') or
+            stripped.startswith('printf') or
+            stripped.startswith('scanf') or 
             '=' not in stripped):
             optimized_ir.append(stripped)
             continue
 
-        # 2. Try constant folding on arithmetic assignments
         match = re.match(r"(\w+)\s*=\s*(\w+)\s*([\+\-\*/])\s*(\w+)", stripped)
         if match:
             dest, left, op, right = match.groups()

@@ -1,0 +1,67 @@
+.progress-tracker {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+}
+
+.tracker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.tracker-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #212529;
+}
+
+.tracker-header span {
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.phase-indicators {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.phase-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.indicator-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #e9ecef;
+  color: #6c757d;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.phase-indicator.completed .indicator-circle {
+  background-color: #4cc9f0;
+  color: white;
+}
+
+.indicator-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  text-align: center;
+}
+
+.phase-indicator.completed .indicator-label {
+  color: #212529;
+  font-weight: 500;
+}
