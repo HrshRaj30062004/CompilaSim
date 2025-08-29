@@ -9,7 +9,10 @@ from optimizer import optimize_ast
 from code_generator import generate_final_code
 
 app = Flask(__name__)
-CORS(app)  # ← Easiest working config for localhost dev
+CORS(app, origins=[
+    "https://compila-sim.vercel.app",
+    "http://localhost:3000"
+], supports_credentials=True)
 
 @app.route('/api/lexical', methods=['POST'])
 def lexical_analysis():
