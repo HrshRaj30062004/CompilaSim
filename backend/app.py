@@ -9,8 +9,10 @@ from optimizer import optimize_ast
 from code_generator import generate_final_code
 
 app = Flask(__name__)
+
 CORS(app, origins=[
     "https://compila-sim.vercel.app",
+    "https://compila-in8tqocra-harshs-projects-9c3b7aa6.vercel.app",  # new deployment URL
     "http://localhost:3000"
 ], supports_credentials=True)
 
